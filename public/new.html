@@ -1,0 +1,604 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medicine Intake Reminder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+    }
+
+    .nav-btn.active {
+      background-color: rgba(255, 255, 255, 0.1);
+      font-weight: 600;
+    }
+
+    .nav-btn.active .indicator {
+      background-color: #ffffff;
+    }
+  </style>
+
+  <!-- Firebase SDKs compatibility -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+</head>
+
+<body class="bg-gray-50 text-gray-800">
+  <div class="flex h-screen">
+    <!-- Sidebar -->
+    <aside
+      class="w-72 bg-gradient-to-b from-violet-600 via-indigo-600 to-blue-700 text-white p-6 flex flex-col justify-between shadow-2xl">
+      <div>
+        <div class="flex items-center space-x-4 mb-8">
+          <div class="w-12 h-12 bg-white rounded-full" id="profile-photo-sidebar"></div>
+          <div>
+            <h2 class="text-lg font-semibold" id="sidebar-name">Your Name</h2>
+            <p class="text-sm text-indigo-100" id="sidebar-email">your.email@example.com</p>
+          </div>
+        </div>
+        <nav class="space-y-2">
+          <button data-section="profile"
+            class="nav-btn relative w-full flex items-center gap-2 text-left py-2 pl-5 pr-4 rounded-lg hover:bg-white/10 transition">
+            <span class="indicator absolute left-0 top-0 h-full w-1 rounded bg-transparent transition-all"></span>
+            🧑‍💼 <span>Profile</span>
+          </button>
+          <button data-section="medicine"
+            class="nav-btn relative w-full flex items-center gap-2 text-left py-2 pl-5 pr-4 rounded-lg hover:bg-white/10 transition">
+            <span class="indicator absolute left-0 top-0 h-full w-1 rounded bg-transparent transition-all"></span>
+            💊 <span>Medicine</span>
+          </button>
+          <button data-section="reminders"
+            class="nav-btn relative w-full flex items-center gap-2 text-left py-2 pl-5 pr-4 rounded-lg hover:bg-white/10 transition">
+            <span class="indicator absolute left-0 top-0 h-full w-1 rounded bg-transparent transition-all"></span>
+            🔔 <span>Reminders</span>
+          </button>
+        </nav>
+      </div>
+      <div class="text-sm text-indigo-100">
+        <p class="font-semibold">Next Medication</p>
+        <p id="next-medication">No upcoming medications</p>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-10 overflow-y-auto">
+      <header class="mb-6">
+        <h1 class="text-3xl font-bold">Medicine Intake Reminder</h1>
+        <p class="text-gray-600">Keep track of your medications and never miss a dose</p>
+      </header>
+
+      <!-- Profile Section -->
+      <section id="profile-section" class="hidden">
+        <div class="bg-white rounded-xl shadow-lg p-8 transition duration-300">
+          <h2 class="text-xl font-semibold mb-4">Profile Information</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <input type="text" placeholder="Full Name" id="profile-name"
+              class="border border-gray-300 p-3 rounded-lg w-full" />
+            <input type="email" placeholder="Email Address" id="profile-email"
+              class="border border-gray-300 p-3 rounded-lg w-full" />
+            <input type="number" placeholder="Age" id="profile-age"
+              class="border border-gray-300 p-3 rounded-lg w-full" />
+
+            
+
+          </div>
+          <button class="mt-6 bg-violet-600 text-white px-6 py-3 rounded-lg hover:bg-violet-700 transition"
+            id="profile-save-btn">Save Profile</button>
+        </div>
+      </section>
+
+      <!-- Medicine Section -->
+      <section id="medicine-section">
+        <div class="bg-white rounded-xl shadow-lg p-8 transition duration-300">
+          <h2 class="text-xl font-semibold mb-4">Add Medication</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <input type="text" placeholder="Medicine Name" id="medicine-name"
+              class="border border-gray-300 p-3 rounded-lg w-full" />
+            <select id="session-select" class="border border-gray-300 p-3 rounded-lg w-full">
+              <option value="" disabled selected hidden>Session (e.g., Morning)</option>
+              <option value="Morning">Morning</option>
+              <option value="Afternoon">Afternoon</option>
+              <option value="Evening">Evening</option>
+            </select>
+
+            <select id="timing-select" class="border border-gray-300 p-3 rounded-lg w-full">
+              <option value="" disabled selected hidden>Timing (e.g., Before food)</option>
+              <option value="Before Food">Before Food</option>
+              <option value="After Food">After Food</option>
+            </select>
+
+            <input type="time" id="medicine-time" class="border border-gray-300 p-3 rounded-lg w-full" />
+          </div>
+          <button class="mt-6 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition"
+            id="medicine-add-btn">+ Add Medicine</button>
+
+          <div class="mt-10">
+            <h3 class="text-lg font-semibold mb-2">Your Medication Schedule</h3>
+            <div id="medicine-schedule-container"
+              class="border-2 border-dashed border-gray-300 p-6 text-center rounded-lg text-gray-500">
+              No medications added yet.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Reminders Section -->
+      <section id="reminders-section" class="hidden">
+        <div class="bg-white rounded-xl shadow-lg p-8 transition duration-300">
+          <h2 class="text-xl font-semibold mb-4">Upcoming Reminders</h2>
+          <div id="upcoming-reminders"
+            class="border-2 border-dashed border-gray-300 p-6 text-center rounded-lg text-gray-500">
+            No reminders scheduled. Add medications to see reminders here.
+          </div>
+
+          <h3 class="text-lg font-semibold mt-10 mb-2">Reminder Settings</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <select id="notification-type" class="border border-gray-300 p-3 rounded-lg w-full">
+              <option value="popup">Pop-up Notification</option>
+              <option value="push">Push Notification</option>
+              <option value="email">Email Notification</option>
+            </select>
+            <select id="notification-time" class="border border-gray-300 p-3 rounded-lg w-full">
+              <option value="0">At the scheduled time</option>
+              <option value="10">10 minutes before</option>
+              <option value="60">1 hour before</option>
+            </select>
+            <label>
+              <h3 class="text-lg font-semibold mt-10 mb-2">Upload Alarm Sound:</h3>
+              <input type="file" id="alarm-upload" accept="audio/*"
+                class="border border-gray-300 p-3 rounded-lg w-full" />
+            </label>
+            <audio id="alarm-audio" loop></audio>
+          </div>
+          <div class="mt-4">
+            <label class="inline-flex items-center">
+              <input type="checkbox" id="repeat-reminder" class="form-checkbox text-violet-600" />
+              <span class="ml-2">Repeat reminder if not taken</span>
+            </label>
+          </div>
+          <button class="mt-6 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+            id="reminder-save-btn">Save Settings</button>
+        </div>
+      </section>
+    </main>
+  </div>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getAuth,
+    onAuthStateChanged,
+    updateEmail,
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc,
+    updateDoc,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    orderBy,
+    deleteDoc,
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import {
+    getStorage,
+    ref as storageRef,
+    uploadBytes,
+    getDownloadURL,
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDY3wWNhIi6th5uwNlM9WMtxihPocNSs00",
+    authDomain: "project-e1b48.firebaseapp.com",
+    projectId: "project-e1b48",
+    storageBucket: "project-e1b48.appspot.com",
+    messagingSenderId: "557259468603",
+    appId: "1:557259468603:web:f0d25bee645a68bbf9511e",
+    measurementId: "G-YWFSYGYK4E",
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth();
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  let currentUser = null;
+  let medicines = [];
+  let reminderSettings = {
+    notificationType: "popup",
+    notificationTime: 0,
+    repeatReminder: false,
+    alarmURL: null,
+  };
+
+  // DOM references (some repeated for clarity)
+  const navButtons = document.querySelectorAll(".nav-btn");
+  const sections = {
+    profile: document.getElementById("profile-section"),
+    medicine: document.getElementById("medicine-section"),
+    reminders: document.getElementById("reminders-section"),
+  };
+
+  const profileInputs = {
+    name: document.getElementById("profile-name"),
+    email: document.getElementById("profile-email"),
+    age: document.getElementById("profile-age"),
+    file: document.getElementById("profile-photo"), // file input might be missing in HTML, if so add <input type="file" id="profile-photo" accept="image/*" />
+  };
+  const profileSaveBtn = document.getElementById("profile-save-btn");
+  const sidebarName = document.getElementById("sidebar-name");
+  const sidebarEmail = document.getElementById("sidebar-email");
+  const profilePhotoSidebar = document.getElementById("profile-photo-sidebar");
+
+  const medicineNameInput = document.getElementById("medicine-name");
+  const sessionSelect = document.getElementById("session-select");
+  const timingSelect = document.getElementById("timing-select");
+  const medicineTimeInput = document.getElementById("medicine-time");
+  const medicineAddBtn = document.getElementById("medicine-add-btn");
+  const medicineScheduleContainer = document.getElementById("medicine-schedule-container");
+
+  const upcomingRemindersContainer = document.getElementById("upcoming-reminders");
+  const alarmUploadInput = document.getElementById("alarm-upload");
+  const alarmAudio = document.getElementById("alarm-audio");
+
+
+  const notificationTypeSelect = document.getElementById("notification-type");
+  const notificationTimeSelect = document.getElementById("notification-time");
+  const repeatReminderCheckbox = document.getElementById("repeat-reminder");
+  const reminderSaveBtn = document.getElementById("reminder-save-btn");
+
+  // Navigation: show section and set active button
+  function showSection(sectionName) {
+    Object.entries(sections).forEach(([name, el]) => {
+      el.classList.toggle("hidden", name !== sectionName);
+    });
+    navButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.section === sectionName));
+  }
+  // Default to medicine section on load
+  showSection("medicine");
+
+  navButtons.forEach((btn) =>
+    btn.addEventListener("click", () => {
+      showSection(btn.dataset.section);
+    })
+  );
+
+  // Load user profile from Firestore
+  async function loadUserProfile(uid) {
+    const docRef = doc(db, "users", uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      profileInputs.name.value = data.name || "";
+      profileInputs.email.value = auth.currentUser?.email || "";
+      profileInputs.age.value = data.age || "";
+      sidebarName.textContent = data.name || "Your Name";
+      sidebarEmail.textContent = auth.currentUser?.email || "your.email@example.com";
+
+      if (data.photoURL) {
+        profilePhotoSidebar.style.backgroundImage = `url(${data.photoURL})`;
+        profilePhotoSidebar.style.backgroundSize = "cover";
+        profilePhotoSidebar.style.backgroundPosition = "center";
+      } else {
+        profilePhotoSidebar.style.backgroundImage = "";
+      }
+    }
+  }
+  
+
+
+  // Save profile changes (name, age, email, photo)
+  profileSaveBtn.addEventListener("click", async () => {
+    if (!currentUser) {
+      alert("User not logged in");
+      return;
+    }
+
+    const name = profileInputs.name.value.trim();
+    const newEmail = profileInputs.email.value.trim();
+    const age = profileInputs.age.value.trim();
+    const file = profileInputs.file?.files[0]; // optional photo file
+
+    if (!name || !newEmail) {
+      alert("Name and Email are required.");
+      return;
+    }
+    if(age>100){
+      alert("Age is too high");
+      return;
+    }
+
+    try {
+      let photoURL = null;
+
+      if (file) {
+        const timestamp = Date.now();
+        const extension = file.name.split(".").pop();
+        const uniqueFileName = `${timestamp}.${extension}`;
+        const photoStorageRef = storageRef(storage, `profilePhotos/${currentUser.uid}/${uniqueFileName}`);
+
+        await uploadBytes(photoStorageRef, file);
+        photoURL = await getDownloadURL(photoStorageRef);
+      }
+
+      const userDocRef = doc(db, "users", currentUser.uid);
+      const updateData = { name, age };
+      if (photoURL) updateData.photoURL = photoURL;
+
+      await setDoc(userDocRef, updateData, { merge: true });
+
+      if (newEmail !== currentUser.email) {
+        await updateEmail(currentUser, newEmail);
+      }
+
+      sidebarName.textContent = name;
+      sidebarEmail.textContent = newEmail;
+
+      if (photoURL) {
+        profilePhotoSidebar.style.backgroundImage = `url(${photoURL})`;
+        profilePhotoSidebar.style.backgroundSize = "cover";
+        profilePhotoSidebar.style.backgroundPosition = "center";
+      }
+
+      alert("Profile saved successfully!");
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      alert("Error saving profile: " + error.message);
+    }
+  });
+
+  // Load medicines from Firestore
+  async function loadMedicines(uid) {
+    medicines = [];
+    const medsQuery = query(collection(db, "users", uid, "medicines"), orderBy("time"));
+    const querySnapshot = await getDocs(medsQuery);
+    querySnapshot.forEach((doc) => {
+      medicines.push({ id: doc.id, ...doc.data() });
+    });
+    displayMedicines();
+    updateNextMedication();
+    displayUpcomingReminders();
+  }
+
+  // Display medicines in UI with delete buttons
+  function displayMedicines() {
+    if (medicines.length === 0) {
+      medicineScheduleContainer.textContent = "No medications added yet.";
+      return;
+    }
+    medicineScheduleContainer.innerHTML = "";
+    medicines.forEach((med) => {
+      const div = document.createElement("div");
+      div.className = "p-3 mb-2 border border-gray-200 rounded-lg flex justify-between items-center";
+      div.innerHTML = `
+        <div>
+          <strong>${med.name}</strong><br />
+          <small>${med.session} | ${med.timing} | ${med.time}</small>
+        </div>
+        <button data-id="${med.id}" class="text-red-600 hover:text-red-800 delete-medicine-btn" title="Delete">&times;</button>
+      `;
+      medicineScheduleContainer.appendChild(div);
+    });
+
+    document.querySelectorAll(".delete-medicine-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const id = e.target.dataset.id;
+        if (confirm("Delete this medicine?")) {
+          try {
+            await deleteDoc(doc(db, "users", currentUser.uid, "medicines", id));
+            medicines = medicines.filter((m) => m.id !== id);
+            displayMedicines();
+            updateNextMedication();
+            displayUpcomingReminders();
+          } catch (err) {
+            alert("Failed to delete medicine: " + err.message);
+          }
+        }
+      });
+    });
+  }
+
+  // Add new medicine
+  medicineAddBtn.addEventListener("click", async () => {
+    const name = medicineNameInput.value.trim();
+    const session = sessionSelect.value;
+    const timing = timingSelect.value;
+    const time = medicineTimeInput.value;
+
+    if (!name || !session || !timing || !time) {
+      alert("Please fill all medicine details.");
+      return;
+    }
+
+    try {
+      const newDocRef = await addDoc(collection(db, "users", currentUser.uid, "medicines"), {
+        name,
+        session,
+        timing,
+        time,
+        createdAt: new Date(),
+      });
+
+      medicines.push({
+        id: newDocRef.id,
+        name,
+        session,
+        timing,
+        time,
+      });
+
+      displayMedicines();
+      updateNextMedication();
+      displayUpcomingReminders();
+
+      medicineNameInput.value = "";
+      sessionSelect.value = "";
+      timingSelect.value = "";
+      medicineTimeInput.value = "";
+    } catch (err) {
+      alert("Failed to add medicine: " + err.message);
+    }
+  });
+
+  // Update the 'Next Medication' info (can be shown in reminders section or sidebar)
+  function updateNextMedication() {
+    if (medicines.length === 0) {
+      upcomingRemindersContainer.innerHTML = "<p>No upcoming medications.</p>";
+      return;
+    }
+    // Sort medicines by time (HH:mm)
+    const now = new Date();
+    const sorted = medicines
+      .map((m) => {
+        const [h, min] = m.time.split(":").map(Number);
+        const medTime = new Date();
+        medTime.setHours(h, min, 0, 0);
+        if (medTime < now) medTime.setDate(medTime.getDate() + 1); // next day if already past
+        return { ...m, medTime };
+      })
+      .sort((a, b) => a.medTime - b.medTime);
+
+    const nextMed = sorted[0];
+    const diffMs = nextMed.medTime - now;
+    const diffMins = Math.floor(diffMs / 60000);
+
+    upcomingRemindersContainer.innerHTML = `
+      <p>Next Medication: <strong>${nextMed.name}</strong> at <strong>${nextMed.time}</strong> (${diffMins} minutes from now)</p>
+    `;
+  }
+
+  // Display upcoming reminders (list all meds in a schedule for today)
+  function displayUpcomingReminders() {
+    if (medicines.length === 0) {
+      upcomingRemindersContainer.innerHTML = "<p>No medications scheduled.</p>";
+      return;
+    }
+    // Show all medicines sorted by time
+    const sorted = medicines
+      .map((m) => {
+        const [h, min] = m.time.split(":").map(Number);
+        return { ...m, timeObj: new Date(0, 0, 0, h, min, 0) };
+      })
+      .sort((a, b) => a.timeObj - b.timeObj);
+
+    upcomingRemindersContainer.innerHTML = sorted
+      .map(
+        (m) =>
+          `<div class="mb-1 p-2 border rounded bg-gray-50">
+            <strong>${m.name}</strong> - ${m.session} | ${m.timing} | ${m.time}
+          </div>`
+      )
+      .join("");
+  }
+
+  // Alarm upload and playback
+  alarmUploadInput.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const timestamp = Date.now();
+    const extension = file.name.split(".").pop();
+    const fileName = `${timestamp}.${extension}`;
+
+    const alarmStorageRef = storageRef(storage, `alarms/${currentUser.uid}/${fileName}`);
+
+    try {
+      await uploadBytes(alarmStorageRef, file);
+      const url = await getDownloadURL(alarmStorageRef);
+      reminderSettings.alarmURL = url;
+      alarmAudio.src = url;
+      alert("Alarm sound uploaded successfully!");
+    } catch (error) {
+      alert("Failed to upload alarm sound: " + error.message);
+    }
+  });
+
+  // Save reminder settings
+  reminderSaveBtn.addEventListener("click", async () => {
+    if (!currentUser) {
+      alert("User not logged in");
+      return;
+    }
+
+    reminderSettings.notificationType = notificationTypeSelect.value;
+    reminderSettings.notificationTime = parseInt(notificationTimeSelect.value);
+    reminderSettings.repeatReminder = repeatReminderCheckbox.checked;
+
+    try {
+      const reminderDocRef = doc(db, "users", currentUser.uid, "settings", "reminderSettings");
+      await setDoc(reminderDocRef, reminderSettings);
+      alert("Reminder settings saved!");
+    } catch (err) {
+      alert("Failed to save reminder settings: " + err.message);
+    }
+  });
+
+  // Load reminder settings from Firestore
+  async function loadReminderSettings(uid) {
+    const docRef = doc(db, "users", uid, "settings", "reminderSettings");
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      reminderSettings = docSnap.data();
+      notificationTypeSelect.value = reminderSettings.notificationType || "popup";
+      notificationTimeSelect.value = reminderSettings.notificationTime?.toString() || "0";
+      repeatReminderCheckbox.checked = reminderSettings.repeatReminder || false;
+      if (reminderSettings.alarmURL) {
+        alarmAudio.src = reminderSettings.alarmURL;
+      }
+    }
+  }
+
+  // Monitor auth state and initialize UI
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      await loadUserProfile(user.uid);
+      await loadMedicines(user.uid);
+      await loadReminderSettings(user.uid);
+    } else {
+      currentUser = null;
+      alert("Please log in to use the app.");
+      // Redirect to login or hide sections
+      showSection("profile");
+    }
+  });
+
+  // You may want to add timers to check reminders and play alarm or show notifications, 
+setInterval(() => {
+  if (!currentUser || medicines.length === 0) return;
+
+  const now = new Date();
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+
+  medicines.forEach((med) => {
+    const [medHours, medMinutes] = med.time.split(":").map(Number);
+    if (currentHours === medHours && currentMinutes === medMinutes) {
+      if (reminderSettings.alarmURL) {
+        alarmAudio.play().catch((e) => {
+          console.error("Alarm play failed:", e);
+        });
+      } else {
+        const synth = window.speechSynthesis;
+        synth.speak(new SpeechSynthesisUtterance(`Time to take your medicine: ${med.name}`));
+      }
+
+      alert(`⏰ It's time to take: ${med.name}`);
+    }
+  });
+}, 60000); // every minute
+
+
+  // but that requires background timing or service workers (beyond scope here).
+</script>
+
+</body>
+
+</html>

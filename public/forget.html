@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Forgot Password</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        #messageBanner {
+            transition: opacity 0.5s ease-in-out;
+            opacity: 0;
+        }
+
+        #messageBanner.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body
+    class="min-h-screen flex items-center justify-center bg-gradient-to-r from-indigo-600 via-purple-700 to-pink-600 px-4">
+
+    <!-- Banner Message -->
+    <div id="messageBanner"
+        class="fixed top-4 left-1/2 transform -translate-x-1/2 w-full max-w-xl mx-auto px-4 py-3 rounded shadow-lg text-white text-center text-lg font-semibold hidden z-50 bg-indigo-700">
+        <span id="messageText"></span>
+        <button id="messageCloseBtn" class="ml-4 font-bold hover:text-gray-300">&times;</button>
+    </div>
+
+    <!-- Forgot Password Form -->
+    <div
+        class="w-full max-w-md p-10 bg-white rounded-3xl shadow-xl ring-1 ring-indigo-300/50 backdrop-blur-md bg-white/90">
+        <h2 class="text-4xl font-extrabold text-center text-indigo-700 mb-3 drop-shadow-sm">Forgot Password</h2>
+        <p class="text-center text-gray-600 mb-8 text-sm tracking-wide">
+            Enter your email and we'll send you a password reset link
+        </p>
+
+        <form id="forgotPasswordForm" class="space-y-6">
+            <div>
+                <label for="forgotEmail" class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                <input type="email" id="forgotEmail" required placeholder="your@example.com"
+                    class="w-full px-5 py-3 rounded-xl border border-gray-300 focus:ring-4 focus:ring-indigo-400 focus:outline-none
+                 shadow-md transition duration-300 ease-in-out text-gray-800 font-medium" />
+            </div>
+            <button type="submit"
+                class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold py-3 rounded-xl
+               transition duration-300 shadow-lg focus:ring-4 focus:ring-indigo-300 focus:outline-none">
+                Send Reset Link
+            </button>
+        </form>
+
+        <div class="mt-8 text-center">
+            <a href="index.html"
+                class="inline-block text-indigo-600 hover:text-indigo-800 font-semibold transition duration-200">
+                ← Back to Login
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDY3wWNhIi6th5uwNlM9WMtxihPocNSs00",
+            authDomain: "project-e1b48.firebaseapp.com",
+            projectId: "project-e1b48",
+            storageBucket: "project-e1b48.appspot.com",
+            messagingSenderId: "557259468603",
+            appId: "1:557259468603:web:f0d25bee645a68bbf9511e",
+            measurementId: "G-YWFSYGYK4E"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        const forgotPasswordForm = document.getElementById("forgotPasswordForm");
+        const messageBanner = document.getElementById("messageBanner");
+        const messageText = document.getElementById("messageText");
+        const messageCloseBtn = document.getElementById("messageCloseBtn");
+
+        function showMessage(message, type = "info") {
+            messageText.textContent = message;
+            messageBanner.classList.remove("hidden");
+
+            // Force reflow to restart transition
+            void messageBanner.offsetWidth;
+
+            messageBanner.classList.add("show");
+
+            // Remove old type classes
+            messageBanner.classList.remove("bg-green-600", "bg-red-600", "bg-indigo-700");
+
+            // Add new type class
+            if (type === "success") {
+                messageBanner.classList.add("bg-green-600");
+            } else if (type === "error") {
+                messageBanner.classList.add("bg-red-600");
+            } else {
+                messageBanner.classList.add("bg-indigo-700");
+            }
+
+            // Clear previous timeout if any
+            clearTimeout(messageBanner.hideTimeout);
+            messageBanner.hideTimeout = setTimeout(hideMessage, 5000);
+        }
+
+        function hideMessage() {
+            messageBanner.classList.remove("show");
+            setTimeout(() => {
+                messageBanner.classList.add("hidden");
+                messageText.textContent = "";
+            }, 500);
+        }
+
+        messageCloseBtn.addEventListener("click", hideMessage);
+
+        forgotPasswordForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const email = document.getElementById("forgotEmail").value.trim();
+
+            const submitBtn = forgotPasswordForm.querySelector("button[type=submit]");
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Sending...";
+
+            auth.sendPasswordResetEmail(email)
+                .then(() => {
+                    showMessage("Password reset link sent to your email.", "success");
+                    forgotPasswordForm.reset();
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Send Reset Link";
+                })
+                .catch((error) => {
+                    const friendlyMessage = getFriendlyErrorMessage(error);
+                    showMessage("⚠️ " + friendlyMessage, "error");
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Send Reset Link";
+                });
+        });
+
+        function getFriendlyErrorMessage(error) {
+            switch (error.code) {
+                case 'auth/invalid-email':
+                    return 'The email address is invalid.';
+                case 'auth/user-not-found':
+                    return 'No account found with this email.';
+                case 'auth/too-many-requests':
+                    return 'Too many attempts. Please try again later.';
+                case 'auth/network-request-failed':
+                    return 'Network error. Please check your connection.';
+                default:
+                    return 'An unexpected error occurred. Please try again.';
+            }
+        }
+    </script>
+</body>
+
+</html>
