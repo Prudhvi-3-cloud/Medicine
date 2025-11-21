@@ -50,12 +50,3 @@ Never miss your medicines again! Manage your daily medication schedule effortles
 - Localisation for multiple languages  
 - Integrate with calendar apps (Google Calendar, Apple Calendar)  
 
-## Contributing  
-1. Fork the repository  
-2. Create a new branch: `git checkout -b feature/YourFeatureName`  
-3. Make your changes and commit: `git commit -m 'Add some feature'`  
-4. Push to the branch: `git push origin feature/YourFeatureName`  
-5. Submit a pull request  
-
-## License  
-MIT License  
